@@ -1,7 +1,8 @@
 package main
 
 import (
-	"errors"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -9,32 +10,50 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
+
+	verbose := flag.Bool("v", false, "`true` provides a verbose output with the result of the comparison")
+	help := flag.Bool("help", false, "provides this help message")
+
+	flag.Parse()
+
+	if *help == true {
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
+
+	if len(flag.Args()) != 2 {
 		log.Fatal("two json documents must be provided")
 	}
 
-	json1 := []byte(os.Args[1])
-	json2 := []byte(os.Args[2])
+	args := flag.Args()
 
-	_, err := CompareJSON(json1, json2)
-	if err != nil {
-		log.Fatal(err.Error())
+	diff, success := CompareJSON([]byte(args[0]), []byte(args[1]), verbose)
+	if success == false {
+		fmt.Println(diff.String())
+		os.Exit(1)
+	} else {
+		fmt.Println(diff.String())
+		os.Exit(0)
 	}
 }
 
-func CompareJSON(json1 []byte, json2 []byte) (jsondiff.Difference, error) {
+func CompareJSON(json1 []byte, json2 []byte, verbose *bool) (jsondiff.Difference, bool) {
 	opts := jsondiff.DefaultConsoleOptions()
 
 	result, diff := jsondiff.Compare(json1, json2, &opts)
 
-	log.Println(result)
-	log.Println("----------BREAK----------")
-	log.Println(diff)
-	log.Println("----------BREAK----------")
+	if *verbose == true {
+		log.Println(result)
+		log.Println("----------DIFF----------")
+		log.Println(diff)
+		log.Println("----------DIFF----------")
+	}
 
-	if result != jsondiff.Difference(1) && result != jsondiff.Difference(0) {
-		return result, errors.New("json documents are different, " + result.String())
+	if result.String() == "FullMatch" {
+		return result, true
+	} else if result.String() == "SupersetMatch" {
+		return result, true
 	} else {
-		return result, nil
+		return result, false
 	}
 }
